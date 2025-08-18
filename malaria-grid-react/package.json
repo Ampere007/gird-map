@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "server": "node server/index.mjs",
+    "dev": "concurrently -k \"npm:server\" \"vite\"",
+    "build": "vite build",
+    "start": "node server/index.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
