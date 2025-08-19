@@ -1,7 +1,8 @@
+/* ===== Global map layout ===== */
 html, body, #root { height: 100%; margin: 0; }
 #map { height: 100vh; width: 100vw; }
 
-/* Card UI */
+/* ===== Card UI (กล่องควบคุมหลักซ้ายบน) ===== */
 .ui-card{
   position: absolute;
   top: 14px; left: 14px;
@@ -27,14 +28,79 @@ html, body, #root { height: 100%; margin: 0; }
 select{ height:28px; border:1px solid #d0d4dd; border-radius:8px; padding:0 8px; background:#fff; }
 input[type="range"]{ width:120px; }
 .slider-wide{ width:100%; }
+.ui-note{ color:#444; margin:6px 0; }
+.ui-error{ color:#b00020; font-weight:600; }
 
+/* ===== Legend ===== */
 .legend{ margin-top:6px; padding-top:6px; border-top:1px solid #e5e7eb; }
 .legend-title{ font-weight:700; margin-bottom:6px; }
 .legend-sub{ font-weight:600; color:#333; }
 .legend-row{ display:flex; align-items:center; gap:8px; margin:2px 0; }
 .box{ width:18px; height:12px; border:1px solid #999; }
 
-/* (ออปชัน) เผื่อใช้งานโดยไม่มี JS reposition ก็ยังขยับเล็กน้อย */
-.leaflet-top.leaflet-left .leaflet-control-layers{
+/* ===== Leaflet built-in controls (ปรับให้เป็นการ์ดมุมขวาบน) ===== */
+.leaflet-top.leaflet-right .leaflet-control {
+  margin-top: 14px;
+  margin-right: 14px;
+}
+.leaflet-control-layers {
+  border: 0;
+  box-shadow: 0 10px 25px rgba(0,0,0,.18);
+  border-radius: 12px;
+  overflow: hidden;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Thai", sans-serif;
+}
+.leaflet-control-layers-expanded {
+  background: rgba(255,255,255,.98);
+  padding: 10px 12px;
+}
+.leaflet-control-layers-separator {
+  border-top: 1px solid #e5e7eb;
+  margin: 8px 0;
+}
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-weight: 600;
+  color: #333;
+}
+.leaflet-control-layers-selector{
+  margin: 0;
+  transform: translateY(0.5px);
+}
+.leaflet-control-layers-list{ margin: 0; }
+.leaflet-control-layers-base label:hover,
+.leaflet-control-layers-overlays label:hover{
+  background: #f7f8fb;
+  border-radius: 8px;
+  padding-left: 6px;
+}
+.leaflet-control-layers-base::before{
+  content: "Base map";
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  color: #666;
+  margin: 2px 0 4px;
+}
+.leaflet-control-layers-overlays::before{
+  content: "Overlays";
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  color: #666;
+  margin: 6px 0 4px;
+}
+
+/* ===== Zoom ปรับเป็นมุมโค้งให้เข้าธีมการ์ด (ออปชัน) ===== */
+.leaflet-control-zoom a{
+  border-radius: 10px !important;
+}
+
+/* กันชนเล็กน้อยกรณีมี control อื่นซ้ายบน */
+.leaflet-top.leaflet-left .leaflet-control{
   margin-top: 8px;
 }

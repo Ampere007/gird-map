@@ -29,7 +29,7 @@ function deltaColor(d){
          d > -0.25 ? "#3182bd" : "#08519c";
 }
 
-// ----- 10km rectangle from center -----
+// ----- rectangle polygon from center (km grid) -----
 function rectFromCenter(lat, lon, gridKm = GRID_KM){
   const dLat = gridKm / 110.574;
   const dLon = gridKm / (111.32 * Math.cos((lat * Math.PI)/180));
@@ -70,7 +70,7 @@ async function loadCsvRows(url){
 export default function ThailandGridMap(){
   const mapRef = useRef(null);
 
-  // four overlay layers (เหมือนของเดิม)
+  // overlay refs
   const lyrNowRef  = useRef(null);
   const lyrPastRef = useRef(null);
   const lyrFwdRef  = useRef(null);
@@ -123,7 +123,7 @@ export default function ThailandGridMap(){
     const terrain = L.tileLayer("https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg", {maxZoom:18, attribution:"Stamen Terrain"});
     const toner = L.tileLayer("https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png", {maxZoom:18, attribution:"Stamen Toner"});
 
-    // overlay layers (ว่างก่อน)
+    // overlay layers (empty for now)
     const mkGeo = () => L.geoJSON([], {
       renderer: L.canvas({padding:0.5}),
       style: ft => ft.properties._style || {},
@@ -139,13 +139,13 @@ export default function ThailandGridMap(){
       }
     });
 
-    lyrNowRef.current   = mkGeo().addTo(m);   // current เปิดไว้ก่อน
+    lyrNowRef.current   = mkGeo().addTo(m);   // current on by default
     lyrPastRef.current  = mkGeo();
     lyrFwdRef.current   = mkGeo();
     lyrDeltaRef.current = mkGeo();
 
-    // layers control (เหมือนโค้ดเดิม)
-    const ctl = L.control.layers(
+    // layers control — move to TOP RIGHT and keep expanded
+    L.control.layers(
       { "OpenStreetMap": osm, "Terrain": terrain, "Toner": toner },
       {
         "Malaria — Current":  lyrNowRef.current,
@@ -153,22 +153,13 @@ export default function ThailandGridMap(){
         "Malaria — Forecast": lyrFwdRef.current,
         "Change (Δ)":         lyrDeltaRef.current,
       },
-      { collapsed:false, position:"topleft" }
+      { collapsed:false, position:"topright" }
     ).addTo(m);
-
-    // ดัน layers control ลงไปใต้กล่อง ui-card
-    const reposition = ()=>{
-      const card = document.querySelector(".ui-card");
-      const el = ctl.getContainer();
-      if(card && el) el.style.marginTop = `${card.offsetHeight + 10}px`;
-    };
-    requestAnimationFrame(reposition);
-    window.addEventListener("resize", reposition);
 
     mapRef.current = m;
   },[]);
 
-  // helpers: สร้าง FeatureCollection ตามชุดข้อมูล + สี
+  // helpers: build FeatureCollection + style
   function buildGeoJSON(list, paint){
     const feats = list.map(r=>{
       const coords = rectFromCenter(r.lat_c, r.lon_c, GRID_KM);
@@ -201,7 +192,7 @@ export default function ThailandGridMap(){
     if(dateIdx>0 && lyrPastRef.current && mapRef.current.hasLayer(lyrPastRef.current)){
       const prev = byDate.get(dates[dateIdx-1]) || [];
       const gj = buildGeoJSON(prev, r => ({
-        weight:.5, color:"#333", opacity:1, fillColor:valueColor(r.value), fillOpacity:.4 // ทำให้จางกว่าเล็กน้อย
+        weight:.5, color:"#333", opacity:1, fillColor:valueColor(r.value), fillOpacity:.4
       }));
       lyrPastRef.current.clearLayers(); lyrPastRef.current.addData(gj);
     } else if(lyrPastRef.current) { lyrPastRef.current.clearLayers(); }
@@ -226,7 +217,7 @@ export default function ThailandGridMap(){
       lyrDeltaRef.current.clearLayers(); lyrDeltaRef.current.addData(gj);
     } else if(lyrDeltaRef.current) { lyrDeltaRef.current.clearLayers(); }
 
-    // fit bounds ตามชั้นที่มองเห็น (ให้ priority current/delta > others)
+    // fit bounds by visible layer
     const visible = [lyrNowRef.current, lyrDeltaRef.current, lyrPastRef.current, lyrFwdRef.current]
       .filter(l => l && mapRef.current.hasLayer(l));
     if(visible.length){
@@ -281,7 +272,6 @@ export default function ThailandGridMap(){
 
         <div className="legend">
           <div className="legend-title">Legend (Incidence & Δ)</div>
-          {/* แสดงสองชุดสี เพื่อให้สอดคล้องกับ overlay ที่ซ้อนกันได้ */}
           <div className="legend-sub">Incidence</div>
           {[ ["> 1.8","#800026"],["1.2–1.8","#BD0026"],["0.9–1.2","#E31A1C"],
              ["0.6–0.9","#FC4E2A"],["0.4–0.6","#FD8D3C"],["0.2–0.4","#FEB24C"],
