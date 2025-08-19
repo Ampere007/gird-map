@@ -1,43 +1,50 @@
-/* base layout */
+/* --- ของเดิมจาก template --- */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover { filter: drop-shadow(0 0 2em #646cffaa); }
+.logo.react:hover { filter: drop-shadow(0 0 2em #61dafbaa); }
+
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo { animation: logo-spin infinite 20s linear; }
+}
+
+.card { padding: 2em; }
+.read-the-docs { color: #888; }
+
+/* --- เพิ่ม/override สำหรับแผนที่ให้เต็มหน้าจอ --- */
 html, body, #root { height: 100%; margin: 0; }
+
+/* override ของ template: อยากให้แผนที่เต็มหน้าจอ ไม่ถูกจำกัดความกว้าง */
+#root {
+  max-width: none;
+  padding: 0;
+  text-align: initial;
+}
+
+/* ตัวแผนที่ต้องสูงเต็ม viewport */
 #map { height: 100vh; }
 
-/* title box (ซ้ายบน) */
-.titlebar{
-  position:absolute; z-index:1000; left:12px; top:12px;
-  background:#fff; padding:8px 12px; border-radius:12px;
-  box-shadow:0 2px 12px rgba(0,0,0,.15);
-  font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-}
-
-/* info box (ขวาบน) */
-.info{
-  position:absolute; z-index:1000; right:12px; top:12px;
-  background:#fff; padding:8px 12px; border-radius:12px;
-  box-shadow:0 2px 12px rgba(0,0,0,.15);
-  font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-}
-.info .file{ color:#666; }
-
-/* legends */
-.legend{
-  background:#fff; padding:8px 10px; border-radius:10px;
-  box-shadow:0 2px 10px rgba(0,0,0,.15);
-  font:13px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-}
-.legend .row{ display:flex; align-items:center; gap:8px; margin:4px 0; }
-.legend .box{ width:16px; height:12px; display:inline-block; border-radius:3px; }
-
-/* HUD เล็ก ๆ (ใช้ใน React เวอร์ชันล่าสุด) */
+/* กล่อง HUD บนมุมซ้าย */
 .hud{
-  position:absolute; z-index:1000; left:12px; top:12px;
-  background:#fff; padding:10px 12px; border-radius:12px;
-  box-shadow:0 2px 12px rgba(0,0,0,.15);
-  font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  position: absolute; z-index: 1000; left: 12px; top: 12px;
+  background: #fff; padding: 10px 12px; border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+  font: 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
 }
 .hud h1{ font-size:16px; margin:0 0 6px; }
 .hud .badge{ background:#f3f4f6; border-radius:8px; padding:2px 8px; margin-left:8px; }
-
-/* ขยับกล่อง control ของ Leaflet ให้อยู่ต่ำกว่ากล่อง title/info */
-.ctl-basemap{ margin-top: 56px; }
-.ctl-overlay{ margin-top: 56px; }

@@ -1,0 +1,40 @@
+html, body, #root { height: 100%; margin: 0; }
+#map { height: 100vh; width: 100vw; }
+
+/* Card UI */
+.ui-card{
+  position: absolute;
+  top: 14px; left: 14px;
+  z-index: 1000;
+  width: 360px;
+  background: rgba(255,255,255,.98);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.18);
+  padding: 12px 14px;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Thai", sans-serif;
+}
+.ui-title{ font-weight:700; margin-bottom:4px; }
+.ui-subtle{ color:#666; margin-bottom:8px; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+.ui-row{ display:flex; align-items:center; gap:10px; margin:8px 0; }
+.ui-row label{ font-weight:600; min-width:46px; }
+.muted{ color:#777; font-weight:500; min-width:auto; }
+.spacer{ flex:1; }
+.badge{ background:#eef; color:#334; padding:2px 8px; border-radius:8px; font-weight:600; }
+.btn{ border:1px solid #d0d4dd; background:#fff; border-radius:8px; height:28px; min-width:28px; padding:0 8px; cursor:pointer; }
+.btn:hover{ background:#f4f6fa; }
+select{ height:28px; border:1px solid #d0d4dd; border-radius:8px; padding:0 8px; background:#fff; }
+input[type="range"]{ width:120px; }
+.slider-wide{ width:100%; }
+
+.legend{ margin-top:6px; padding-top:6px; border-top:1px solid #e5e7eb; }
+.legend-title{ font-weight:700; margin-bottom:6px; }
+.legend-sub{ font-weight:600; color:#333; }
+.legend-row{ display:flex; align-items:center; gap:8px; margin:2px 0; }
+.box{ width:18px; height:12px; border:1px solid #999; }
+
+/* (ออปชัน) เผื่อใช้งานโดยไม่มี JS reposition ก็ยังขยับเล็กน้อย */
+.leaflet-top.leaflet-left .leaflet-control-layers{
+  margin-top: 8px;
+}
