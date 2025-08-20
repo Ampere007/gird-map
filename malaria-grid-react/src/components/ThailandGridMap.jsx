@@ -366,11 +366,11 @@ export default function ThailandGridMap(){
       <div className="right-panel">
         <div className="card">
           <div className="card-header">
-            <span>Summary</span>
+            <span>ผู้เสี่ยงติดเชื้อ</span>
             <span className="caret">▾</span>
           </div>
           <div className="summary-box">
-            <div className="summary-value">{total2025.toLocaleString()}</div>
+            <div className="summary-value">7,850</div>
             <div className="summary-year">2025</div>
           </div>
         </div>
