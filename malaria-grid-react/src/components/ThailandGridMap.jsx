@@ -360,7 +360,7 @@ export default function ThailandGridMap(){
     localStorage.setItem("selectedVillage", JSON.stringify(payload));
 
     // ใช้ ENV ได้ด้วย (ถ้าไม่ได้ตั้ง จะไป 5175 ตามที่คุณต้องการ)
-    const TARGET_BASE = import.meta.env.VITE_RISK_APP_URL || "http://localhost:5175/risk-assessment";
+    const TARGET_BASE = import.meta.env.VITE_RISK_APP_URL || "http://localhost:5173/risk-assessment";
     const params = new URLSearchParams(payload).toString();
 
     // นำทางในแท็บเดิม (กัน popup ถูกบล็อก)
