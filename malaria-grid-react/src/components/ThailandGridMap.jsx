@@ -14,7 +14,7 @@ const villagePoints = [
   { name: "แม่สอด",        province: "ตาก",         lat: 16.714, lng: 98.569, counts: { 2025: 44, 2024: 5, 2023: 2 } },
   { name: "พบพระ",         province: "ตาก",         lat: 16.415, lng: 98.706, counts: { 2025: 21, 2024: 2, 2023: 1 } },
   { name: "แม่ระมาด",       province: "ตาก",         lat: 16.981, lng: 98.360, counts: { 2025: 15, 2024: 3, 2023: 0 } },
-  { name: "ท่าสองยาง",     province: "ตาก",        lat: 17.133, lng: 98.015, counts: { 2025: 26, 2024: 4, 2023: 1 } },
+  { name: "ท่าสองยาง",     province: "ตาก",         lat: 17.133, lng: 98.015, counts: { 2025: 26, 2024: 4, 2023: 1 } },
   { name: "แม่สะเรียง",     province: "แม่ฮ่องสอน",  lat: 18.166, lng: 97.933, counts: { 2025: 12, 2024: 0, 2023: 0 } },
   { name: "สบเมย",          province: "แม่ฮ่องสอน",  lat: 17.718, lng: 97.932, counts: { 2025: 19, 2024: 1, 2023: 0 } },
   { name: "ปางมะผ้า",       province: "แม่ฮ่องสอน",  lat: 19.565, lng: 98.248, counts: { 2025: 7,  2024: 0, 2023: 0 } },
@@ -29,14 +29,60 @@ const villagePoints = [
   { name: "คีรีรัฐนิคม",    province: "สุราษฎร์ธานี", lat: 8.914,  lng: 99.178, counts: { 2025: 11, 2024: 0, 2023: 0 } },
   { name: "พังงา",          province: "พังงา",        lat: 8.450,  lng: 98.525, counts: { 2025: 7,  2024: 0, 2023: 0 } },
   { name: "คลองท่อม",       province: "กระบี่",       lat: 7.930,  lng: 99.142, counts: { 2025: 8,  2024: 0, 2023: 0 } },
-  { name: "ควนโดน",        province: "สตูล",         lat: 6.939,  lng: 100.083,counts: { 2025: 5,  2024: 0, 2023: 0 } },
+  { name: "ควนโดน",        province: "สตูล",         lat: 6.939,  lng: 100.083, counts: { 2025: 5,  2024: 0, 2023: 0 } },
 ];
 
-function sum2025(arr) { return arr.reduce((s, v) => s + (v.counts?.[2025] || 0), 0); }
-function top5ByProvince() {
+/* ========= TARGET TOTAL + SCALER ========= */
+const TARGET_TOTAL = 7850;
+const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+
+function scaleVillageCounts(points, target){
+  const baseArr = points.map(p => p.counts?.[2025] || 0);
+  const baseSum = baseArr.reduce((a,b)=>a+b,0);
+  if (baseSum <= 0) {
+    const m = new Map(); points.forEach(p=>m.set(p.name,0));
+    return { scaled: m, total: 0 };
+  }
+  const scaledFloat = baseArr.map(v => v * target / baseSum);
+  const floors = scaledFloat.map(x => Math.floor(x));
+  let remainder = target - floors.reduce((a,b)=>a+b,0);
+
+  const order = scaledFloat
+    .map((x,i)=>({ i, frac: x - floors[i] }))
+    .sort((a,b)=> b.frac - a.frac);
+  for (let k=0; k<order.length && remainder>0; k++){
+    floors[order[k].i]++; remainder--;
+  }
+
+  const m = new Map();
+  points.forEach((p, idx)=> m.set(p.name, floors[idx]));
+  return { scaled: m, total: target };
+}
+
+/* ===== กระจายค่าเป็น 2023/2024 (ไว้โชว์ในโมดัล) ===== */
+function buildYearSpreadMap(points, scaledMap){
+  const spread = new Map();
+  for (const p of points){
+    const s25 = scaledMap.get(p.name) || 0;
+    const c23 = p.counts?.[2023] || 0;
+    const c24 = p.counts?.[2024] || 0;
+    const r24base = (c24 + 0.5) / (s25 + 1);
+    const r23base = (c23 + 0.5) / (s25 + 1);
+    const r24 = clamp(0.18 + 0.60 * r24base, 0.12, 0.45);
+    const r23 = clamp(0.10 + 0.50 * r23base, 0.05, 0.30);
+    let y24 = Math.round(s25 * r24);
+    let y23 = Math.round(s25 * r23);
+    y24 = Math.max(Math.min(y24, s25), c24);
+    y23 = Math.max(Math.min(y23, y24), c23);
+    spread.set(p.name, { 2023: y23, 2024: y24, 2025: s25 });
+  }
+  return spread;
+}
+
+function top5ByProvinceScaled(countMap){
   const byProv = new Map();
   for (const p of villagePoints) {
-    const v = p.counts?.[2025] || 0;
+    const v = countMap.get(p.name) || 0;
     byProv.set(p.province, (byProv.get(p.province) || 0) + v);
   }
   return [...byProv.entries()]
@@ -44,6 +90,8 @@ function top5ByProvince() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 }
+
+const fmt = (n) => Number(n || 0).toLocaleString("th-TH");
 
 /* ============ COLOR SCALES ============ */
 function valueColor(v){
@@ -120,8 +168,19 @@ export default function ThailandGridMap(){
   const [fps, setFps] = useState(2);
   const [loading, setLoading] = useState(true);
   const [csvErr, setCsvErr] = useState(null);
-
   const [selectedVillage, setSelectedVillage] = useState(null);
+
+  /* ===== คำนวณผลรวม = 7,850 + กระจายย้อนหลัง ===== */
+  const { scaled: scaledMap, total: scaledTotal } = useMemo(
+    () => scaleVillageCounts(villagePoints, TARGET_TOTAL),
+    []
+  );
+  const yearSpreadMap = useMemo(
+    () => buildYearSpreadMap(villagePoints, scaledMap),
+    [scaledMap]
+  );
+  const top5 = useMemo(() => top5ByProvinceScaled(scaledMap), [scaledMap]);
+  const topMax = Math.max(...top5.map(d=>d.value), 1);
 
   const byDate = useMemo(()=>{
     const m = new Map();
@@ -251,16 +310,19 @@ export default function ThailandGridMap(){
     }
   }, [dateIdx, dates, byDate]);
 
+  /* ===== วาดจุดแดง (ใช้ค่าหลังสเกลปี 2025) ===== */
   useEffect(()=>{
     if(!mapRef.current || !villagesLayerRef.current) return;
 
     villagesLayerRef.current.clearLayers();
 
-    const ranked = [...villagePoints].sort((a,b)=> (b.counts?.[2025]||0) - (a.counts?.[2025]||0));
+    const ranked = [...villagePoints].sort(
+      (a,b)=> (scaledMap.get(b.name)||0) - (scaledMap.get(a.name)||0)
+    );
     const top3Names = new Set(ranked.slice(0,3).map(v=>v.name));
 
     for(const v of villagePoints){
-      const n = v.counts?.[2025] || 0;
+      const n = scaledMap.get(v.name) || 0;
 
       const html = `
         <div class="vp-bubble ${top3Names.has(v.name) ? "vp-top3" : ""}">
@@ -278,42 +340,46 @@ export default function ThailandGridMap(){
       marker.on("click", () => setSelectedVillage(v));
       marker.addTo(villagesLayerRef.current);
     }
-  }, []);
+  }, [scaledMap]);
 
-  // ✅ กด "ต่อไป" -> ส่งค่าไป risk-assessment (query string + localStorage สำรอง)
+  // ===== ไปหน้า risk-assessment พร้อม query =====
   function handleNext(village){
     if(!village) return;
+
+    const risk = scaledMap.get(village.name) || 0;
+    const level = risk > 20 ? "urgent" : risk > 10 ? "medium" : "normal";
 
     const payload = {
       name: village.name || "ไม่ระบุ",
       lat: String(village.lat ?? ""),
       lng: String(village.lng ?? village.lon ?? ""),
-      level:
-        village.level ||
-        ((village.counts?.[2025] || 0) > 20 ? "urgent" :
-         (village.counts?.[2025] || 0) > 10 ? "medium" : "normal"),
+      level,
+      risk: String(risk),
     };
 
-    // สำรองให้หน้าใหม่ใช้ได้แม้รีเฟรช
     localStorage.setItem("selectedVillage", JSON.stringify(payload));
 
+    // ใช้ ENV ได้ด้วย (ถ้าไม่ได้ตั้ง จะไป 5175 ตามที่คุณต้องการ)
+    const TARGET_BASE = import.meta.env.VITE_RISK_APP_URL || "http://localhost:5175/risk-assessment";
     const params = new URLSearchParams(payload).toString();
-    const TARGET = "http://localhost:5177/risk-assessment";
-    window.open(`${TARGET}?${params}`, "_blank"); // หรือ "_self" ถ้าต้องการแท็บเดิม
+
+    // นำทางในแท็บเดิม (กัน popup ถูกบล็อก)
+    window.location.href = `${TARGET_BASE}?${params}`;
+    // ถ้าต้องการเปิดแท็บใหม่แทน: window.open(`${TARGET_BASE}?${params}`, "_blank", "noopener");
   }
 
   const selDate = dates.length ? dates[Math.min(Math.max(dateIdx,0), dates.length-1)] : "-";
-  const total2025 = sum2025(villagePoints);
-  const top5 = top5ByProvince();
-  const topMax = Math.max(...top5.map(d=>d.value), 1);
 
   return (
     <>
       <div id="map" />
 
+      {/* ===== กล่องซ้าย (UI Card + Legend) ===== */}
       <div className="ui-card">
         <div className="ui-title">มาลาเรีย — แผนที่แนวโน้มแบบกริด (ประเทศไทย)</div>
-        <div className="ui-subtle">ไฟล์: <code className="mono">{CSV_URL.replace(import.meta.env.BASE_URL,"/")}</code></div>
+        <div className="ui-subtle">
+          ไฟล์: <code className="mono">{CSV_URL.replace(import.meta.env.BASE_URL,"/")}</code>
+        </div>
 
         <div className="ui-row">
           <label>วันที่</label>
@@ -362,7 +428,7 @@ export default function ThailandGridMap(){
         </div>
       </div>
 
-      {/* Right panel */}
+      {/* ===== กล่องขวา (สรุป/Top5/Marker Info) ===== */}
       <div className="right-panel">
         <div className="card">
           <div className="card-header">
@@ -370,7 +436,7 @@ export default function ThailandGridMap(){
             <span className="caret">▾</span>
           </div>
           <div className="summary-box">
-            <div className="summary-value">7,850</div>
+            <div className="summary-value">{fmt(scaledTotal)}</div>
             <div className="summary-year">2025</div>
           </div>
         </div>
@@ -386,7 +452,7 @@ export default function ThailandGridMap(){
                 <div className="bar-label">{d.province}</div>
                 <div className="bar-track">
                   <div className="bar-fill" style={{ width: `${(d.value / topMax) * 100}%` }} />
-                  <div className="bar-value">{d.value}</div>
+                  <div className="bar-value">{fmt(d.value)}</div>
                 </div>
               </div>
             ))}
@@ -406,7 +472,7 @@ export default function ThailandGridMap(){
         </div>
       </div>
 
-      {/* Modal */}
+      {/* ===== โมดัลเลือกหมู่บ้าน ===== */}
       {selectedVillage && (
         <div className="modal-mask" onClick={()=>setSelectedVillage(null)}>
           <div className="modal" onClick={(e)=>e.stopPropagation()}>
@@ -421,20 +487,21 @@ export default function ThailandGridMap(){
                   Detail | <span className="detail-date">25-Feb</span> <span className="arrow">→</span> <span className="detail-date green">10-Dec</span>
                 </div>
                 <div className="detail-lines">
-                  <div>Year: 2025 = <b>{selectedVillage.counts?.[2025] || 0}</b></div>
-                  <div>Year: 2024 = <b>{selectedVillage.counts?.[2024] || 0}</b></div>
-                  <div>Year: 2023 = <b>{selectedVillage.counts?.[2023] || 0}</b></div>
+                  <div>Year: 2025 = <b>{yearSpreadMap.get(selectedVillage.name)?.[2025] || 0}</b></div>
+                  <div>Year: 2024 = <b>{yearSpreadMap.get(selectedVillage.name)?.[2024] || 0}</b></div>
+                  <div>Year: 2023 = <b>{yearSpreadMap.get(selectedVillage.name)?.[2023] || 0}</b></div>
                 </div>
               </div>
 
               <div className="mini-bars">
                 {([2025, 2024, 2023]).map((y) => {
-                  const vals = selectedVillage.counts || {};
-                  const maxv = Math.max(vals[2025]||0, vals[2024]||0, vals[2023]||0, 1);
-                  const h = ((vals[y]||0)/maxv)*120;
+                  const ys = yearSpreadMap.get(selectedVillage.name) || {2025:0,2024:0,2023:0};
+                  const show = ys[y] || 0;
+                  const maxv = Math.max(ys[2025], ys[2024], ys[2023], 1);
+                  const h = (show / maxv) * 120;
                   return (
                     <div className="mb-col" key={y}>
-                      <div className="mb-bar" style={{ height: `${h}px` }}>{vals[y]||0}</div>
+                      <div className="mb-bar" style={{ height: `${h}px` }}>{show}</div>
                       <div className="mb-year">{y}</div>
                     </div>
                   );
@@ -443,11 +510,7 @@ export default function ThailandGridMap(){
             </div>
 
             <div className="modal-footer">
-              <button
-                id="next-button"
-                className="btn-primary"
-                onClick={() => handleNext(selectedVillage)}
-              >
+              <button id="next-button" className="btn-primary" onClick={() => handleNext(selectedVillage)}>
                 ต่อไป
               </button>
             </div>
