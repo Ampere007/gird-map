@@ -298,7 +298,7 @@ export default function ThailandGridMap(){
     localStorage.setItem("selectedVillage", JSON.stringify(payload));
 
     const params = new URLSearchParams(payload).toString();
-    const TARGET = "http://localhost:5175/risk-assessment";
+    const TARGET = "http://localhost:5177/risk-assessment";
     window.open(`${TARGET}?${params}`, "_blank"); // หรือ "_self" ถ้าต้องการแท็บเดิม
   }
 
