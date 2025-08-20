@@ -4,10 +4,48 @@ import "leaflet/dist/leaflet.css";
 import Papa from "papaparse";
 import "../styles/map.css";
 
+/* ============ CONFIG ============ */
 const CSV_URL = `${import.meta.env.BASE_URL}data/malaria_th_daily.csv`;
 const GRID_KM = 10;
 
-// ----- color scales -----
+/* ============ MOCK VILLAGE POINTS ============ */
+const villagePoints = [
+  { name: "อุ้มผาง",        province: "ตาก",         lat: 16.042, lng: 98.854, counts: { 2025: 8,  2024: 1, 2023: 0 } },
+  { name: "แม่สอด",        province: "ตาก",         lat: 16.714, lng: 98.569, counts: { 2025: 44, 2024: 5, 2023: 2 } },
+  { name: "พบพระ",         province: "ตาก",         lat: 16.415, lng: 98.706, counts: { 2025: 21, 2024: 2, 2023: 1 } },
+  { name: "แม่ระมาด",       province: "ตาก",         lat: 16.981, lng: 98.360, counts: { 2025: 15, 2024: 3, 2023: 0 } },
+  { name: "ท่าสองยาง",     province: "ตาก",        lat: 17.133, lng: 98.015, counts: { 2025: 26, 2024: 4, 2023: 1 } },
+  { name: "แม่สะเรียง",     province: "แม่ฮ่องสอน",  lat: 18.166, lng: 97.933, counts: { 2025: 12, 2024: 0, 2023: 0 } },
+  { name: "สบเมย",          province: "แม่ฮ่องสอน",  lat: 17.718, lng: 97.932, counts: { 2025: 19, 2024: 1, 2023: 0 } },
+  { name: "ปางมะผ้า",       province: "แม่ฮ่องสอน",  lat: 19.565, lng: 98.248, counts: { 2025: 7,  2024: 0, 2023: 0 } },
+  { name: "แม่ลาน้อย",      province: "แม่ฮ่องสอน",  lat: 18.286, lng: 97.941, counts: { 2025: 10, 2024: 2, 2023: 0 } },
+  { name: "สังขละบุรี",     province: "กาญจนบุรี",   lat: 15.154, lng: 98.456, counts: { 2025: 33, 2024: 4, 2023: 1 } },
+  { name: "ทองผาภูมิ",     province: "กาญจนบุรี",   lat: 14.735, lng: 98.642, counts: { 2025: 27, 2024: 3, 2023: 1 } },
+  { name: "ไทรโยค",        province: "กาญจนบุรี",   lat: 14.395, lng: 98.993, counts: { 2025: 18, 2024: 2, 2023: 1 } },
+  { name: "บางสะพาน",      province: "ประจวบคีรีขันธ์", lat: 11.209, lng: 99.493, counts: { 2025: 9,  2024: 0, 2023: 0 } },
+  { name: "ทับสะแก",        province: "ประจวบคีรีขันธ์", lat: 11.273, lng: 99.608, counts: { 2025: 6,  2024: 0, 2023: 0 } },
+  { name: "ระนอง",          province: "ระนอง",        lat: 9.963,  lng: 98.638, counts: { 2025: 17, 2024: 1, 2023: 0 } },
+  { name: "หลังสวน",        province: "ชุมพร",        lat: 10.109, lng: 99.210, counts: { 2025: 13, 2024: 1, 2023: 0 } },
+  { name: "คีรีรัฐนิคม",    province: "สุราษฎร์ธานี", lat: 8.914,  lng: 99.178, counts: { 2025: 11, 2024: 0, 2023: 0 } },
+  { name: "พังงา",          province: "พังงา",        lat: 8.450,  lng: 98.525, counts: { 2025: 7,  2024: 0, 2023: 0 } },
+  { name: "คลองท่อม",       province: "กระบี่",       lat: 7.930,  lng: 99.142, counts: { 2025: 8,  2024: 0, 2023: 0 } },
+  { name: "ควนโดน",        province: "สตูล",         lat: 6.939,  lng: 100.083,counts: { 2025: 5,  2024: 0, 2023: 0 } },
+];
+
+function sum2025(arr) { return arr.reduce((s, v) => s + (v.counts?.[2025] || 0), 0); }
+function top5ByProvince() {
+  const byProv = new Map();
+  for (const p of villagePoints) {
+    const v = p.counts?.[2025] || 0;
+    byProv.set(p.province, (byProv.get(p.province) || 0) + v);
+  }
+  return [...byProv.entries()]
+    .map(([province, value]) => ({ province, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+}
+
+/* ============ COLOR SCALES ============ */
 function valueColor(v){
   return v > 1.8 ? "#800026" :
          v > 1.2 ? "#BD0026" :
@@ -29,7 +67,7 @@ function deltaColor(d){
          d > -0.25 ? "#3182bd" : "#08519c";
 }
 
-// ----- rectangle polygon from center (km grid) -----
+/* ============ RECT FROM CENTER (KM GRID) ============ */
 function rectFromCenter(lat, lon, gridKm = GRID_KM){
   const dLat = gridKm / 110.574;
   const dLon = gridKm / (111.32 * Math.cos((lat * Math.PI)/180));
@@ -44,7 +82,7 @@ function rectFromCenter(lat, lon, gridKm = GRID_KM){
   ];
 }
 
-// ----- CSV loader (robust delimiter) -----
+/* ============ CSV LOADER ============ */
 async function loadCsvRows(url){
   const res = await fetch(url);
   if(!res.ok) throw new Error(`Fetch CSV failed: ${res.status} ${res.statusText}`);
@@ -69,25 +107,22 @@ async function loadCsvRows(url){
 
 export default function ThailandGridMap(){
   const mapRef = useRef(null);
-
-  // overlay refs
-  const lyrNowRef  = useRef(null);
-  const lyrPastRef = useRef(null);
-  const lyrFwdRef  = useRef(null);
-  const lyrDeltaRef= useRef(null);
+  const lyrNowRef   = useRef(null);
+  const lyrPastRef  = useRef(null);
+  const lyrFwdRef   = useRef(null);
+  const lyrDeltaRef = useRef(null);
+  const villagesLayerRef = useRef(null);
 
   const [rows, setRows] = useState([]);
   const [dates, setDates] = useState([]);
   const [dateIdx, setDateIdx] = useState(0);
-
-  // small player
   const [playing, setPlaying] = useState(false);
   const [fps, setFps] = useState(2);
-
   const [loading, setLoading] = useState(true);
   const [csvErr, setCsvErr] = useState(null);
 
-  // group by date
+  const [selectedVillage, setSelectedVillage] = useState(null);
+
   const byDate = useMemo(()=>{
     const m = new Map();
     for(const r of rows){
@@ -97,7 +132,6 @@ export default function ThailandGridMap(){
     return m;
   }, [rows]);
 
-  // load CSV
   useEffect(()=>{
     (async()=>{
       try{
@@ -112,18 +146,15 @@ export default function ThailandGridMap(){
     })();
   },[]);
 
-  // init map + base/overlay controls
   useEffect(()=>{
     if(mapRef.current) return;
 
     const m = L.map("map", { center:[15.5,101.0], zoom:6, preferCanvas:true });
 
-    // base maps
     const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18, attribution:"© OpenStreetMap"}).addTo(m);
     const terrain = L.tileLayer("https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg", {maxZoom:18, attribution:"Stamen Terrain"});
     const toner = L.tileLayer("https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png", {maxZoom:18, attribution:"Stamen Toner"});
 
-    // overlay layers (empty for now)
     const mkGeo = () => L.geoJSON([], {
       renderer: L.canvas({padding:0.5}),
       style: ft => ft.properties._style || {},
@@ -139,12 +170,13 @@ export default function ThailandGridMap(){
       }
     });
 
-    lyrNowRef.current   = mkGeo().addTo(m);   // current on by default
+    lyrNowRef.current   = mkGeo().addTo(m);
     lyrPastRef.current  = mkGeo();
     lyrFwdRef.current   = mkGeo();
     lyrDeltaRef.current = mkGeo();
 
-    // layers control — move to TOP RIGHT and keep expanded
+    villagesLayerRef.current = L.layerGroup().addTo(m);
+
     L.control.layers(
       { "OpenStreetMap": osm, "Terrain": terrain, "Toner": toner },
       {
@@ -159,7 +191,6 @@ export default function ThailandGridMap(){
     mapRef.current = m;
   },[]);
 
-  // helpers: build FeatureCollection + style
   function buildGeoJSON(list, paint){
     const feats = list.map(r=>{
       const coords = rectFromCenter(r.lat_c, r.lon_c, GRID_KM);
@@ -173,14 +204,12 @@ export default function ThailandGridMap(){
     return { type:"FeatureCollection", features:feats };
   }
 
-  // refresh layers when date changes / data loaded
   useEffect(()=>{
     if(!mapRef.current || dates.length===0) return;
 
     const sel = dates[Math.min(Math.max(dateIdx,0), dates.length-1)];
     const curr = byDate.get(sel) || [];
 
-    // Current
     if(lyrNowRef.current && mapRef.current.hasLayer(lyrNowRef.current)){
       const gj = buildGeoJSON(curr, r => ({
         weight:.5, color:"#333", opacity:1, fillColor:valueColor(r.value), fillOpacity:.65
@@ -188,7 +217,6 @@ export default function ThailandGridMap(){
       lyrNowRef.current.clearLayers(); lyrNowRef.current.addData(gj);
     }
 
-    // Past (วันก่อน)
     if(dateIdx>0 && lyrPastRef.current && mapRef.current.hasLayer(lyrPastRef.current)){
       const prev = byDate.get(dates[dateIdx-1]) || [];
       const gj = buildGeoJSON(prev, r => ({
@@ -197,7 +225,6 @@ export default function ThailandGridMap(){
       lyrPastRef.current.clearLayers(); lyrPastRef.current.addData(gj);
     } else if(lyrPastRef.current) { lyrPastRef.current.clearLayers(); }
 
-    // Forecast (วันถัดไป)
     if(dateIdx < dates.length-1 && lyrFwdRef.current && mapRef.current.hasLayer(lyrFwdRef.current)){
       const fwd = byDate.get(dates[dateIdx+1]) || [];
       const gj = buildGeoJSON(fwd, r => ({
@@ -206,7 +233,6 @@ export default function ThailandGridMap(){
       lyrFwdRef.current.clearLayers(); lyrFwdRef.current.addData(gj);
     } else if(lyrFwdRef.current) { lyrFwdRef.current.clearLayers(); }
 
-    // Delta (เทียบวันก่อน)
     if(dateIdx>0 && lyrDeltaRef.current && mapRef.current.hasLayer(lyrDeltaRef.current)){
       const prev = byDate.get(dates[dateIdx-1]) || [];
       const prevMap = new Map(prev.map(r=>[r.cell_id, r.value]));
@@ -217,7 +243,6 @@ export default function ThailandGridMap(){
       lyrDeltaRef.current.clearLayers(); lyrDeltaRef.current.addData(gj);
     } else if(lyrDeltaRef.current) { lyrDeltaRef.current.clearLayers(); }
 
-    // fit bounds by visible layer
     const visible = [lyrNowRef.current, lyrDeltaRef.current, lyrPastRef.current, lyrFwdRef.current]
       .filter(l => l && mapRef.current.hasLayer(l));
     if(visible.length){
@@ -226,19 +251,66 @@ export default function ThailandGridMap(){
     }
   }, [dateIdx, dates, byDate]);
 
-  // autoplay
   useEffect(()=>{
-    if(!playing || dates.length<=1) return;
-    const iv = Math.max(50, 1000/ fps);
-    const id = setInterval(()=> setDateIdx(i => (i+1)%dates.length), iv);
-    return ()=> clearInterval(id);
-  }, [playing, fps, dates.length]);
+    if(!mapRef.current || !villagesLayerRef.current) return;
+
+    villagesLayerRef.current.clearLayers();
+
+    const ranked = [...villagePoints].sort((a,b)=> (b.counts?.[2025]||0) - (a.counts?.[2025]||0));
+    const top3Names = new Set(ranked.slice(0,3).map(v=>v.name));
+
+    for(const v of villagePoints){
+      const n = v.counts?.[2025] || 0;
+
+      const html = `
+        <div class="vp-bubble ${top3Names.has(v.name) ? "vp-top3" : ""}">
+          <span>${n}</span>
+        </div>`;
+      const icon = L.divIcon({
+        className: "vp-icon",
+        html,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      const marker = L.marker([v.lat, v.lng], { icon });
+      marker.bindTooltip(v.name, { direction: "right", offset: [10, 0], permanent: false, className: "vp-tooltip" });
+      marker.on("click", () => setSelectedVillage(v));
+      marker.addTo(villagesLayerRef.current);
+    }
+  }, []);
+
+  // ✅ กด "ต่อไป" -> ส่งค่าไป risk-assessment (query string + localStorage สำรอง)
+  function handleNext(village){
+    if(!village) return;
+
+    const payload = {
+      name: village.name || "ไม่ระบุ",
+      lat: String(village.lat ?? ""),
+      lng: String(village.lng ?? village.lon ?? ""),
+      level:
+        village.level ||
+        ((village.counts?.[2025] || 0) > 20 ? "urgent" :
+         (village.counts?.[2025] || 0) > 10 ? "medium" : "normal"),
+    };
+
+    // สำรองให้หน้าใหม่ใช้ได้แม้รีเฟรช
+    localStorage.setItem("selectedVillage", JSON.stringify(payload));
+
+    const params = new URLSearchParams(payload).toString();
+    const TARGET = "http://localhost:5175/risk-assessment";
+    window.open(`${TARGET}?${params}`, "_blank"); // หรือ "_self" ถ้าต้องการแท็บเดิม
+  }
 
   const selDate = dates.length ? dates[Math.min(Math.max(dateIdx,0), dates.length-1)] : "-";
+  const total2025 = sum2025(villagePoints);
+  const top5 = top5ByProvince();
+  const topMax = Math.max(...top5.map(d=>d.value), 1);
 
   return (
     <>
       <div id="map" />
+
       <div className="ui-card">
         <div className="ui-title">มาลาเรีย — แผนที่แนวโน้มแบบกริด (ประเทศไทย)</div>
         <div className="ui-subtle">ไฟล์: <code className="mono">{CSV_URL.replace(import.meta.env.BASE_URL,"/")}</code></div>
@@ -289,6 +361,99 @@ export default function ThailandGridMap(){
           ))}
         </div>
       </div>
+
+      {/* Right panel */}
+      <div className="right-panel">
+        <div className="card">
+          <div className="card-header">
+            <span>Summary</span>
+            <span className="caret">▾</span>
+          </div>
+          <div className="summary-box">
+            <div className="summary-value">{total2025.toLocaleString()}</div>
+            <div className="summary-year">2025</div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span>Top5</span>
+            <span className="caret">▾</span>
+          </div>
+          <div className="bars">
+            {top5.map((d) => (
+              <div className="bar-row" key={d.province}>
+                <div className="bar-label">{d.province}</div>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${(d.value / topMax) * 100}%` }} />
+                  <div className="bar-value">{d.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="marker-info card">
+          <div className="card-header">
+            <span>Marker Info</span>
+            <span className="caret">▾</span>
+          </div>
+          <div className="mi-row">
+            <span className="mi-dot" /> CaseInVillage
+            <span className="mi-spacer" />
+            <span className="mi-top3" /> Top3
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {selectedVillage && (
+        <div className="modal-mask" onClick={()=>setSelectedVillage(null)}>
+          <div className="modal" onClick={(e)=>e.stopPropagation()}>
+            <div className="modal-title">
+              Village: {selectedVillage.name}
+              <button className="modal-close" onClick={()=>setSelectedVillage(null)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="detail-box">
+                <div className="detail-title">
+                  Detail | <span className="detail-date">25-Feb</span> <span className="arrow">→</span> <span className="detail-date green">10-Dec</span>
+                </div>
+                <div className="detail-lines">
+                  <div>Year: 2025 = <b>{selectedVillage.counts?.[2025] || 0}</b></div>
+                  <div>Year: 2024 = <b>{selectedVillage.counts?.[2024] || 0}</b></div>
+                  <div>Year: 2023 = <b>{selectedVillage.counts?.[2023] || 0}</b></div>
+                </div>
+              </div>
+
+              <div className="mini-bars">
+                {([2025, 2024, 2023]).map((y) => {
+                  const vals = selectedVillage.counts || {};
+                  const maxv = Math.max(vals[2025]||0, vals[2024]||0, vals[2023]||0, 1);
+                  const h = ((vals[y]||0)/maxv)*120;
+                  return (
+                    <div className="mb-col" key={y}>
+                      <div className="mb-bar" style={{ height: `${h}px` }}>{vals[y]||0}</div>
+                      <div className="mb-year">{y}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                id="next-button"
+                className="btn-primary"
+                onClick={() => handleNext(selectedVillage)}
+              >
+                ต่อไป
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
