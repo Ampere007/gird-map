@@ -1,3 +1,4 @@
+// src/components/ThailandGridMap.jsx  (หรือ src/pages/ThailandGridMap.jsx)
 import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -359,13 +360,15 @@ export default function ThailandGridMap(){
 
     localStorage.setItem("selectedVillage", JSON.stringify(payload));
 
-    // ใช้ ENV ได้ด้วย (ถ้าไม่ได้ตั้ง จะไป 5175 ตามที่คุณต้องการ)
-    const TARGET_BASE = import.meta.env.VITE_RISK_APP_URL || "https://malaria-x-pbn4.vercel.app/risk-area";
-    const params = new URLSearchParams(payload).toString();
+    // ✅ ชี้โดเมนปลายทางจาก ENV (Production) + บังคับ path /risk-assessment
+    const ORIGIN = import.meta.env.VITE_RISK_APP_ORIGIN || "https://malaria-x-pbn4.vercel.app";
+    const PATH   = "/risk-assessment";
+    const url = new URL(PATH, ORIGIN);
+    url.search = new URLSearchParams(payload).toString();
 
-    // นำทางในแท็บเดิม (กัน popup ถูกบล็อก)
-    window.location.href = `${TARGET_BASE}?${params}`;
-    // ถ้าต้องการเปิดแท็บใหม่แทน: window.open(`${TARGET_BASE}?${params}`, "_blank", "noopener");
+    // นำทางในแท็บเดิม
+    window.location.href = url.toString();
+    // ถ้าต้องการเปิดแท็บใหม่: window.open(url.toString(), "_blank", "noopener");
   }
 
   const selDate = dates.length ? dates[Math.min(Math.max(dateIdx,0), dates.length-1)] : "-";
